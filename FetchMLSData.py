@@ -5,6 +5,12 @@ from bs4 import BeautifulSoup
 import sys
 import re
 import csv
+import operator
+from operator import itemgetter
+from re import sub
+from decimal import Decimal
+import geopy
+from geopy.geocoders import Nominatim
 
 with urllib.request.urlopen('http://matrix.abor.com/Matrix/Public/Portal.aspx?ID=0-613312852-10') as response:
    html = response.read()
@@ -41,8 +47,8 @@ def MLSTableRowParser(datalist):
     #24 - Invalid
     #25 - Invalid
     if len(datalist) != 25:
-        print ('Invalid input data: ')
-        print ((datalist)) 
+        #print ('Invalid input data: ')
+        #print ((datalist)) 
         return None
 
     dict = {}
@@ -62,6 +68,17 @@ def MLSTableRowParser(datalist):
     dict['Acres'] = datalist[17]
     dict['L Price'] = datalist[18]
     dict['Type'] = datalist[20]
+    #Derivative data
+    price = dict['L Price'].strip('$').replace(',','')
+    sqft = dict['Sqft'].replace(',','')
+    dict['PricePerSqft'] = int(int(price) / int(sqft))
+
+    if int(dict['Yr Blt']) < 2005:
+        return None 
+
+    geolocator = Nominatim()
+    location = geolocator.geocode(dict['Address'] + ', Texas')
+    print (location.address)
 
     return dict
 
@@ -80,5 +97,8 @@ for tag in divTag:
               dict = MLSTableRowParser(alist)
               if dict is not None:
                    HomeList.append(dict)
-         output.writerow([])
-#print (len(HomeList))
+
+SortedHomeList = sorted(HomeList, key=operator.itemgetter('PricePerSqft'))
+
+for aHome in SortedHomeList:
+    print (aHome)
